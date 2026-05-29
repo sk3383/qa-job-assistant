@@ -1,149 +1,86 @@
-# QA Job Assistant - Automatyzacja Aplikacji z Bielik LLM
+# QA Job Assistant – Bielik + NoFluffJobs
 
-Narzędzie dla testerów do automatycznej analizy ofert pracy i generowania spersonalizowanych CV/LM przy użyciu lokalnego modelu językowego Bielik.
+Automat dla testerów. Pobiera oferty QA z NoFluffJobs, liczy dopasowanie do Twoich skilli i generuje **PDF** (CV/LM) przez lokalnego Bielika.
 
 ## 🎯 Co robi?
 
-- Pobiera aktualne oferty QA z JustJoin.it
-- Analizuje dopasowanie Twoich umiejętności do wymagań
-- Generuje raport HTML z rankingiem ofert
-- Tworzy spersonalizowane CV i listy motywacyjne przez Bielik LLM (on-demand)
-- Buduje ranking najpopularniejszych umiejętności na rynku
+- Scrapuje NoFluffJobs (remote testing)
+- Wyciąga "Obowiązkowe" i opis firmy bezpośrednio z oferty
+- Liczy % dopasowania do `moje_skillz.json`
+- Pokazuje statystyki TOP technologii na rynku
+- Generuje raport HTML z rankingiem
+- **Na klik** tworzy PDF listu motywacyjnego lub CV przez Bielik 11B
 
-## 🛠️ Technologie
+## 🛠️ Stack
 
-- **Python 3.10+** - requests, json, podstawy automatyzacji
-- **Flask** - lokalne API do generowania PDF
-- **ReportLab** - generowanie PDF z polskimi znakami
-- **Bielik 11B** - lokalny LLM przez LM Studio
-- **HTML/CSS** - interaktywny raport
+- Python 3.10+ – requests, BeautifulSoup
+- http.server – lokalne API (port 8000)
+- ReportLab – PDF z polskimi znakami (DejaVu)
+- Bielik 11B v2.3 – LM Studio na porcie 1234
+- HTML/CSS/JS – raport
 
 ## 📦 Instalacja
 
-1. **Sklonuj repozytorium:**
 ```bash
-git clone https://github.com/sk3383/qa-job-assistant.git
-cd qa-job-assistant
+git clone https://github.com/TWOJ_NICK/bielik-qa-scraper.git
+cd bielik-qa-scraper
+pip install requests beautifulsoup4 reportlab
 ```
 
-2. **Zainstaluj zależności:**
-```bash
-pip install flask requests reportlab
-```
+**LM Studio:**
+1. Pobierz LM Studio
+2. Model: `bielik-11b-v2.3-instruct` (Q4_K_M)
+3. Local Server → Port **1234** → Start
 
-3. **Skonfiguruj Bielika (LM Studio):**
-   - Pobierz [LM Studio](https://lmstudio.ai/)
-   - Discover > wyszukaj `bielik-11b-v2.3-instruct` (wersja Q4_K_M ~7GB)
-   - Local Server > Port 1234 > Start Server
-   - Ustawienia: Context Length 4096, Temperature 0.6
-
-4. **Skonfiguruj swoje umiejętności** w `moje_skillz.json`:
+**Twoje skille** – edytuj `moje_skillz.json`:
 ```json
-[
-  "manual testing",
-  "api testing",
-  "postman",
-  "rest api",
-  "sql",
-  "playwright",
-  "jira",
-  "git",
-  "agile"
-]
+{"skills": ["Manual Testing","Selenium","Playwright","API Testing","Postman","JIRA","SQL","Python"]}
 ```
 
-## 🚀 Uruchomienie
+## 🚀 Uruchomienie (2 terminale)
 
-**WAŻNE: Potrzebujesz DWÓCH terminali**
-
-**Terminal 1 - Serwer PDF (zostaw uruchomiony):**
+**Terminal 1 – serwer PDF:**
 ```bash
 python server.py
-# [Running on http://127.0.0.1:5000]
+# http://localhost:8000
 ```
 
-**Terminal 2 - Generowanie raportu:**
+**Terminal 2:**
 ```bash
-python pobierz.py    # pobiera oferty z JustJoin.it
-python raport.py     # tworzy raport.html
-```
-Otwórz `raport.html` w przeglądarce i klikaj przyciski LM/CV.
-
-Nie zamykaj Terminala 1 podczas generowania PDF.
-
-## 🔌 API
-
-Serwer działa na `http://localhost:5000`
-
-### `GET /pdf`
-Generuje CV lub list motywacyjny
-
-**Parametry:**
-- `type` - `lm` lub `cv`
-- `company` - nazwa firmy
-- `title` - stanowisko
-
-**Przykład:**
-```
-http://localhost:5000/pdf?type=lm&company=Google&title=QA+Engineer
+python pobierz.py   # pobiera ~20 ofert
+python raport.py    # tworzy raport.html
 ```
 
-### `GET /status`
-Status serwera i cache
+Otwórz: **http://localhost:8000/raport.html**
+Kliknij **LM** lub **CV** → pobierze PDF.
 
-## 📁 Struktura projektu
+## 📊 v1.3 – co nowego (29.05.2026)
+
+- ✅ PDF generowany lokalnie (400-500 słów, akapity, justowanie)
+- ✅ Statystyki TOP 12 technologii na górze raportu
+- ✅ Parsowanie "Obowiązkowe" z NoFluffJobs – 100% trafność
+- ✅ Opis firmy z oferty (bez AI)
+- ✅ CORS fix – działa z przeglądarki
+- ✅ Ranking dopasowania do Twoich skilli
+
+## 📁 Struktura
 
 ```
-├── pobierz.py           # Scraper JustJoin.it API
-├── raport.py            # Generator raportu HTML
-├── server.py            # API Flask do PDF
-├── moje_skillz.json     # Twoje umiejętności
-├── oferty.json          # Cache ofert (gitignored)
-├── firmy_cache.json     # Cache opisów firm
-├── cv/                  # Wygenerowane CV
-├── lm/                  # Wygenerowane LM
-└── fonts/               # Fonty DejaVu (auto-download)
+pobierz.py       # scraper NoFluffJobs
+raport.py        # generator HTML + statystyki
+server.py        # API /lm i /cv → PDF
+moje_skillz.json # Twoje umiejętności
+oferty.json      # cache (gitignored)
+fonts/           # DejaVu (auto-pobierane)
 ```
-
-## 🌐 Źródło danych
-
-- **JustJoin.it API:** `https://api.justjoin.it/v2/user-panel/offers`
-- Filtry w `pobierz.py`: kategoria `testing`, lokalizacje remote/hybrid/Polska
-
-## 💡 Dlaczego powstał?
-
-Jako tester manualny przeglądałem codziennie dziesiątki ofert. Zamiast robić to ręcznie:
-1. Skrypt pobiera oferty i liczy dopasowanie skilli
-2. Widzę od razu gdzie mam największe szanse
-3. Bielik generuje spersonalizowane dokumenty w 5 sekund
-
-Projekt do nauki automatyzacji, pracy z API i integracji LLM.
 
 ## 🔧 Troubleshooting
 
-**"Błąd połączenia z localhost:5000"**
-→ Uruchom `python server.py` w Terminalu 1
-
-**"Błąd połączenia z localhost:1234"**
-→ LM Studio > Local Server nie działa
-
-**PDF z kwadratami zamiast ąęć**
-→ usuń folder `fonts/`, uruchom ponownie server.py
-
-**Wolne generowanie**
-→ LM Studio > zmniejsz Context Length do 2048
-
-**Wyczyść cache:**
-```bash
-del firmy_cache.json
-rmdir /s /q cv lm
-mkdir cv lm
-```
+**Przyciski nie działają** → uruchom `server.py` i LM Studio
+**Błąd OPTIONS 501** → masz starą wersję server.py – zaktualizuj
+**Kwadraty zamiast ąę** → usuń folder `fonts/`, uruchom ponownie
+**Za krótki tekst** → w LM Studio ustaw Context 4096, max_tokens 900
 
 ## 📝 Licencja
 
-MIT - używaj, modyfikuj, ucz się
-
-## 🤝 Autor
-
-Projekt edukacyjny - stworzony do nauki automatyzacji w QA
+MIT
