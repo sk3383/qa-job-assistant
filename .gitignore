@@ -1,0 +1,25 @@
+# Dane prywatne
+oferty.json
+firmy_cache.json
+ranking_skills.json
+raport.html
+
+# Wygenerowane PDF
+cv/
+lm/
+fonts/
+aplikacje/
+
+# Python
+__pycache__/
+*.pyc
+.env
+venv/
+
+# System
+.DS_Store
+Thumbs.db
+
+# Lokalne pliki
+run.bat
+readme.txt
