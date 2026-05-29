@@ -1,36 +1,7 @@
 {
-  "must_have": ["API testing", "SQL", "Git", "Postman", "Testing", "REST API"],
-  "nice_to_have": ["Docker", "Playwright", "Jira"],
-  "poziom": "mid",
-  "cv_opis": "Tester manualny z 5 letnim doświadczeniem w testowaniu aplikacji desktopowym i API. Specjalizuję w pisaniu przypadków testowych, SQL. Znam  podstawy Java. Uczę się automatyzacji w Python i Playwright, podstawy Docker. Testy funkcjonalne, regresyjne, akceptacyjne, integracyjne, eksploracyjne, projektowanie scenariuszy i przypadków testowych, analiza wymagań i specyfikacji technicznej. SoapUI (wysyłanie requestów XML/SOAP, testowanie usług sieciowych).Git (GitHub, GitLab), Docker (podstawy konteneryzacji), ogólna znajomość architektury aplikacji (Frontend: C#, Backend: Java). Język angielski (poziom B2)",
-  "oczekiwane_brutto": 9999,
-  "imie_nazwisko": "Jan Kowalski",
-  "email": "jan.kowalski@email.com",
-  "telefon": "+48 500 000 000",
-  "profil_lm": "Skrupulatny tester z pasją do jakości. Lubię rozkładać aplikacje na części i znajdować edge case'y.",
   "skills": [
-    "Manual Testing",
-    "Postman",
-    "API Testing",
-    "SQL",
-    "Git",
-    "REST"
-  ],
-  "ucze_sie": [
-    "Playwright",
-    "Python",
-    "Automatyzacja testów",
-    "CI/CD"
-  ],
-  "nie_znam": [
-    "Selenium",
-    "Java",
-    "C#",
-    "TestNG",
-    "JUnit",
-    "Appium",
-    "Katalon",
-    "Robot Framework",
-    "Cypress"
+    "Manual Testing", "Test Automation", "Selenium", "Playwright", "Cypress",
+    "API Testing", "Postman", "REST", "SQL", "JIRA", "TestRail", "ISTQB",
+    "Python", "JavaScript", "Git", "Jenkins", "Docker", "Agile", "Scrum"
   ]
 }

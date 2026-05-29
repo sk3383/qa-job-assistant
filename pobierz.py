@@ -1,82 +1,117 @@
-import requests, json, re, time, os
+import requests
+import json
+import re
+import time
+from bs4 import BeautifulSoup
 from datetime import datetime
-import urllib3
-urllib3.disable_warnings()
 
-print("1/3 Pobieram NoFluffJobs (scraping)...")
+print("1/3 Pobieram NoFluffJobs...")
 
 oferty = []
-try:
-    url = "https://nofluffjobs.com/pl/testing?remote=true"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        "Accept-Language": "pl-PL,pl;q=0.9"
-    }
-    r = requests.get(url, headers=headers, timeout=30)
-    print(f" - status: {r.status_code}")
+headers = {"User-Agent": "Mozilla/5.0"}
 
-    # wyciągnij JSON z Next.js
-    m = re.search(r'<script id="__NEXT_DATA__" type="application/json">(.*?)</script>', r.text, re.DOTALL)
-    if not m:
-        raise Exception("Nie znaleziono danych JSON")
-    
-    data = json.loads(m.group(1))
-    # ścieżka do ofert w Next.js (zmienia się, więc szukamy rekurencyjnie)
-    postings = []
-    def find_postings(obj):
-        if isinstance(obj, dict):
-            if "postings" in obj and isinstance(obj["postings"], list):
-                postings.extend(obj["postings"])
-            for v in obj.values():
-                find_postings(v)
-        elif isinstance(obj, list):
-            for item in obj:
-                find_postings(item)
-    find_postings(data)
+r = requests.get("https://nofluffjobs.com/pl/testing?criteria=remote", headers=headers, timeout=20)
+soup = BeautifulSoup(r.text, "html.parser")
 
-    print(f" - znaleziono {len(postings)} ofert w JSON")
+for a in soup.find_all("a", href=re.compile(r"/pl/job/"))[:30]:
+    href = a.get("href")
+    if not href:
+        continue
 
-    for p in postings[:50]:
-        title = p.get("title","")
-        company = p.get("company",{}).get("name","")
-        pid = p.get("id","")
-        link = f"https://nofluffjobs.com/pl/job/{pid}"
-        posted = p.get("posted","")[:10] or datetime.now().strftime("%Y-%m-%d")
-        
+    url = "https://nofluffjobs.com" + href
+    title_raw = a.get_text(" ", strip=True)
+    title = re.split(r'NOWA|\d{2}\s?\d{3}', title_raw)[0].strip()
+
+    if not re.search(r'\b(qa|test|tester|quality|testing)\b', title, re.I):
+        continue
+
+    print(f" + {title}")
+
+    try:
+        pr = requests.get(url, headers=headers, timeout=12)
+        ps = BeautifulSoup(pr.text, "html.parser")
+        txt = ps.get_text("\n", strip=True)
+
+        # FIRMA
+        company_tag = ps.find("a", href=re.compile("/company/"))
+        company = company_tag.get_text(strip=True) if company_tag else ""
+
+        # PENSJA
         salary = ""
-        if p.get("salary"):
-            s = p["salary"]
-            if s.get("from") and s.get("to"):
-                salary = f"{s['from']//1000}-{s['to']//1000}k PLN"
+        sal = re.search(r'(\d{1,2}[\s\u202f]?\d{3}\s*[–-]\s*\d{1,2}[\s\u202f]?\d{3}\s*PLN)', txt)
+        if sal:
+            salary = sal.group(1).replace("\u202f", " ")
 
+        # MIASTO
+        miasto = "Zdalnie"
+        loc = re.search(r'Praca zdalna\s*[-–\n ]+([A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]+(?:,\s*[A-ZĄĆĘŁŃÓŚŹŻ][a-ząćęłńóśźż]+)*)', txt)
+        if loc:
+            miasto = loc.group(1)
+
+        # === WYMAGANE - NAPRAWIONE ===
         musts = []
-        for tech in p.get("technology",{}).get("musts",[]):
-            musts.append(tech.get("value",""))
-        
-        # filtr QA
-        if not any(k in title.lower() for k in ["test","qa","quality"]):
-            continue
+        # metoda 1: wyciągnij blok po "Obowiązkowe"
+        obow_match = re.search(r'Obowiązkowe\s*(.*?)\s*(?:Mile widziane|Nice to have|Benefity|Opis wymagań|Opis oferty)', txt, re.S | re.I)
+        if obow_match:
+            block = obow_match.group(1)
+            lines = block.split("\n")
+            for line in lines:
+                clean = line.strip(" •-–\t")
+                if 2 < len(clean) < 50 and not clean.lower().startswith("http"):
+                    # odfiltruj śmieci
+                    if clean.lower() not in ["apple", "windows", "notebook", "komputer"]:
+                        musts.append(clean)
+            musts = musts[:12]
+
+        # metoda 2: fallback - szukaj technologii
+        if not musts:
+            techs = re.findall(r'\b(Selenium|Playwright|Cypress|Postman|JIRA|SQL|Python|Java|JavaScript|TypeScript|REST API|API testing|Test management|Testing|TestRail|ISTQB|Git|Jenkins|Docker|C#|Robot Framework|Azure|AWS)\b', txt, re.I)
+            musts = list(dict.fromkeys([t.title() for t in techs]))
+
+        # wyczyść
+        musts = [m for m in musts if m.lower() not in ["apple", "windows", "notebook", "komputer", "praca zdalna"]]
+
+        # === OPIS FIRMY z NoFluff ===
+        firma_opis = ""
+        o_firmie = ps.find(lambda t: t.name in ["h2", "h3"] and "O firmie" in t.get_text())
+        if o_firmie:
+            for sib in o_firmie.find_next_siblings()[:4]:
+                if sib.name == "p":
+                    firma_opis += sib.get_text(" ", strip=True) + " "
+
+        if not firma_opis:
+            opis = ps.find(lambda t: t.name in ["h2", "h3"] and "Opis oferty" in t.get_text())
+            if opis:
+                p = opis.find_next("p")
+                if p:
+                    firma_opis = p.get_text(" ", strip=True)
+
+        if not firma_opis:
+            firma_opis = f"{company} - firma IT"
+
+        firma_opis = firma_opis[:280].strip()
 
         oferty.append({
             "title": title,
             "company": company,
-            "url": link,
-            "posted": posted,
+            "url": url,
+            "posted": datetime.now().strftime("%Y-%m-%d"),
             "salary": salary,
-            "musts": musts[:8],
+            "musts": musts,
             "nices": [],
-            "firma_opis": "",
-            "miasto": "Remote"
+            "firma_opis": firma_opis,
+            "miasto": miasto
         })
 
-except Exception as e:
-    print(f" BŁĄD: {e}")
+        time.sleep(0.6)
 
-print(f" - wybrano {len(oferty)} testing remote")
+    except Exception as e:
+        print(f"! błąd: {e}")
+        continue
 
-# zapisz
-with open("oferty.json","w",encoding="utf-8") as f:
+print(f"\n - wybrano {len(oferty)} ofert")
+
+with open("oferty.json", "w", encoding="utf-8") as f:
     json.dump(oferty, f, ensure_ascii=False, indent=2)
 
-print(f"\nGOTOWE - {len(oferty)} ofert")
-print("Uruchom: python raport.py")
+print("GOTOWE - uruchom: python raport.py")
